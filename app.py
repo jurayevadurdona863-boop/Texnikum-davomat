@@ -59,10 +59,10 @@ def check_attendance():
 
     if distance <= RADIUS_METERS:
         # O'zbekiston vaqti (UTC +5) bo'yicha aniq vaqtni olish
-UZT = timezone(timedelta(hours=5))
-now_uzt = datetime.now(UZT)
-today_date = now_uzt.strftime("%Y-%m-%d")
-now_time = now_uzt.strftime("%H:%M:%S")  # Soat va minutigacha (HH:MM:SS)
+        UZT = timezone(timedelta(hours=5))
+        now_uzt = datetime.now(UZT)
+        today_date = now_uzt.strftime("%Y-%m-%d")
+        now_time = now_uzt.strftime("%H:%M:%S")  # Soat va minutigacha
         
         file_path = 'attendance.csv'
         try:
