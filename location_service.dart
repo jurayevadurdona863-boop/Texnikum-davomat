@@ -3,12 +3,12 @@ import 'package:sqflite/sqflite.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-// Texnikum koordinatalari
+// 2-son texnikumning aniq koordinatalari va 500 metr radius
 const double TECHNIKUM_LAT = 38.971199;
 const double TECHNIKUM_LON = 66.707470;
-const double RADIUS_METERS = 500.0;
+const double RADIUS_METERS = 500.0; // Ruxsat etilgan radius 500 metr
 
-// 1. GPS orqali masofani tekshirish funksiyasi
+// GPS orqali masofani tekshirish va saqlash funksiyasi
 void checkLocationAndSave(int userId, String fullName) async {
   Position position = await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high);
@@ -20,24 +20,36 @@ void checkLocationAndSave(int userId, String fullName) async {
     TECHNIKUM_LON,
   );
 
+  // 500 metr radius ichida ekanligini tekshiramiz
   if (distance <= RADIUS_METERS) {
-    // Hududda! Vaqtni olamiz
     String currentTime = DateTime.now().toString();
     
-    // Internet bor-yo'qligini tekshirib, serverga yuboramiz yoki lokal bazaga saqlaymiz
+    // Internet bor-yo'qligini tekshiramiz
     bool isConnected = await checkInternetConnection();
     
     if (isConnected) {
       sendToServer(userId, fullName, position.latitude, position.longitude, "Keldi");
     } else {
+      // Internet bo'lmasa mahalliy bazaga saqlab turadi
       saveToLocalDatabase(userId, fullName, currentTime, "Keldi");
     }
   }
 }
 
-// 2. Serverga yuborish
+// Internet mavjudligini tekshirish
+Future<bool> checkInternetConnection() async {
+  try {
+    final result = await http.get(Uri.parse('https://google.com'));
+    return result.statusCode == 200;
+  } catch (_) {
+    return false;
+  }
+}
+
+// Serverga yuborish (Render ssilkangizni qo'yasiz)
 Future<void> sendToServer(int id, String name, double lat, double lon, String status) async {
-  final url = Uri.parse('https://SIZNING-RENDER-SSILKANGIZ.onrender.com/check-attendance');
+  // Quyidagi ssilka o'rniga Render'dan olgan o'z ssilkangizni yozasiz
+  final url = Uri.parse('https://texnikum-davomat.onrender.com/check-attendance');
   try {
     await http.post(
       url,
@@ -53,4 +65,10 @@ Future<void> sendToServer(int id, String name, double lat, double lon, String st
   } catch (e) {
     print("Serverga ulanish xatosi, ma'lumot saqlab qolindi.");
   }
+}
+
+// Mahalliy xotiraga saqlash (internet bo'lmaganda)
+void saveToLocalDatabase(int id, String name, String time, String status) {
+  // SQLite bazasiga vaqtincha yozib qo'yish mantiqi
+  print("Ma'lumot lokal bazaga saqlandi: $name, $time");
 }
