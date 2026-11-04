@@ -9,7 +9,7 @@ app = Flask(__name__)
 # 2-son texnikumning aniq koordinatalari va 500 metr radius
 TECHNIKUM_LAT = 38.971199
 TECHNIKUM_LON = 66.707470
-RADIUS_METERS = 500  # Ruxsat etilgan radius 500 metr qilib belgilandi
+RADIUS_METERS = 500  # Ruxsat etilgan radius 500 metr
 
 def calculate_distance(lat1, lon1, lat2, lon2):
     """Ikki nuqta orasidagi masofani metrda hisoblaydi"""
@@ -23,6 +23,10 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
     return R * c
+
+@app.route('/')
+def home():
+    return "2-son Texnikum Davomat Serveri mukammal ishlamoqda!"
 
 @app.route('/check-attendance', methods=['POST'])
 def check_attendance():
