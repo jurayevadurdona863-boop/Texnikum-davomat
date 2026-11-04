@@ -11,7 +11,7 @@ TECHNIKUM_LAT = 38.971199
 TECHNIKUM_LON = 66.707470
 RADIUS_METERS = 500  # Ruxsat etilgan radius 500 metr
 
-EXCEL_FILE = 'teachers.xlsx'  # Siz yuklagan Excel fayl nomi
+EXCEL_FILE = 'teachers.xlsx'  # Xodimlar Excel fayli
 
 def calculate_distance(lat1, lon1, lat2, lon2):
     """Ikki nuqta orasidagi masofani metrda hisoblaydi"""
@@ -33,7 +33,7 @@ def home():
 @app.route('/check-attendance', methods=['POST'])
 def check_attendance():
     data = request.json
-    user_id = data.get('user_id')  # JSHR yoki xodim raqami
+    user_id = data.get('user_id')  # JSHR raqami
     user_lat = data.get('latitude')
     user_lon = data.get('longitude')
     action_type = data.get('action_type', 'Keldi')
@@ -41,17 +41,16 @@ def check_attendance():
     if not all([user_id, user_lat, user_lon]):
         return jsonify({'success': False, 'message': 'Ma’lumotlar yetishmayapti!'}), 400
 
-    # Excel bazadan xodimni qidiramiz
+    # Excel bazadan xodimni JSHR (E ustuni) bo'yicha qidiramiz
     full_name = "Noma'lum xodim"
     if os.path.exists(EXCEL_FILE):
         try:
             df_excel = pd.read_excel(EXCEL_FILE)
-            # Excel fayldagi ustun nomlariga qarab moslaysiz (masalan, JSHR yoki ID ustuni)
-            # Bu yerda user_id Exceldagi JSHR yoki tartib raqamiga mos kelishi tekshiriladi
-            matched = df_excel[df_excel.astype(str).isin([str(user_id)]).any(axis=1)]
+            # E ustuni (4-indeks) PNFL bo'yicha qidirish
+            matched = df_excel[df_excel.iloc[:, 4].astype(str).str.contains(str(user_id), na=False)]
             if not matched.empty:
-                # Ism-familiya yozilgan ustundan F.I.O. ni olamiz (masalan, 'F.I.O' yoki mos ustun)
-                full_name = str(matched.iloc[0].values[1]) # Ustun tartibiga ko'ra o'zgarishi mumkin
+                # B ustunidan (1-indeks) Ism sharifini olamiz
+                full_name = str(matched.iloc[0, 1])
         except Exception as e:
             print("Excel o'qish xatosi:", e)
 
