@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 import math
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import os
 
 app = Flask(__name__)
@@ -58,8 +58,11 @@ def check_attendance():
     distance = calculate_distance(user_lat, user_lon, TECHNIKUM_LAT, TECHNIKUM_LON)
 
     if distance <= RADIUS_METERS:
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        today_date = datetime.now().strftime("%Y-%m-%d")
+        # O'zbekiston vaqti (UTC +5) bo'yicha aniq vaqtni olish
+UZT = timezone(timedelta(hours=5))
+now_uzt = datetime.now(UZT)
+today_date = now_uzt.strftime("%Y-%m-%d")
+now_time = now_uzt.strftime("%H:%M:%S")  # Soat va minutigacha (HH:MM:SS)
         
         file_path = 'attendance.csv'
         try:
@@ -71,7 +74,7 @@ def check_attendance():
             'user_id': user_id, 
             'full_name': full_name, 
             'date': today_date, 
-            'time': now, 
+            'time': now_time, 
             'status': action_type
         }
         
@@ -81,7 +84,7 @@ def check_attendance():
         return jsonify({
             'success': True,
             'message': f"Muvaffaqiyatli qayd etildi: {full_name} ({action_type})!",
-            'time': now,
+            'time': now_time,
             'distance': round(distance, 1)
         })
     else:
