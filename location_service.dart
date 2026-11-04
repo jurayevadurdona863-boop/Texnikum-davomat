@@ -8,8 +8,8 @@ const double TECHNIKUM_LAT = 38.971199;
 const double TECHNIKUM_LON = 66.707470;
 const double RADIUS_METERS = 500.0; // Ruxsat etilgan radius 500 metr
 
-// GPS orqali masofani tekshirish va saqlash funksiyasi
-void checkLocationAndSave(int userId, String fullName) async {
+// GPS orqali masofani tekshirish va yuborish funksiyasi
+void checkLocationAndSave(String userJshr) async {
   Position position = await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high);
 
@@ -28,10 +28,10 @@ void checkLocationAndSave(int userId, String fullName) async {
     bool isConnected = await checkInternetConnection();
     
     if (isConnected) {
-      sendToServer(userId, fullName, position.latitude, position.longitude, "Keldi");
+      sendToServer(userJshr, position.latitude, position.longitude, "Keldi");
     } else {
       // Internet bo'lmasa mahalliy bazaga saqlab turadi
-      saveToLocalDatabase(userId, fullName, currentTime, "Keldi");
+      saveToLocalDatabase(userJshr, currentTime, "Keldi");
     }
   }
 }
@@ -46,17 +46,16 @@ Future<bool> checkInternetConnection() async {
   }
 }
 
-// Serverga yuborish (Render ssilkangizni qo'yasiz)
-Future<void> sendToServer(int id, String name, double lat, double lon, String status) async {
-  // Quyidagi ssilka o'rniga Render'dan olgan o'z ssilkangizni yozasiz
+// Serverga JSHR va koordinatalarni yuborish
+Future<void> sendToServer(String jshr, double lat, double lon, String status) async {
+  // Render'dan olgan o'z ssilkangizni yozasiz
   final url = Uri.parse('https://texnikum-davomat.onrender.com/check-attendance');
   try {
     await http.post(
       url,
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
-        "user_id": id,
-        "full_name": name,
+        "user_id": jshr, // Exceldagi JSHR kodi jo'natiladi
         "latitude": lat,
         "longitude": lon,
         "action_type": status
@@ -68,7 +67,6 @@ Future<void> sendToServer(int id, String name, double lat, double lon, String st
 }
 
 // Mahalliy xotiraga saqlash (internet bo'lmaganda)
-void saveToLocalDatabase(int id, String name, String time, String status) {
-  // SQLite bazasiga vaqtincha yozib qo'yish mantiqi
-  print("Ma'lumot lokal bazaga saqlandi: $name, $time");
+void saveToLocalDatabase(String jshr, String time, String status) {
+  print("Ma'lumot lokal bazaga saqlandi: JSHR $jshr, $time");
 }
