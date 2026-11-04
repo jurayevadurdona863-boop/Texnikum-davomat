@@ -11,6 +11,8 @@ TECHNIKUM_LAT = 38.971199
 TECHNIKUM_LON = 66.707470
 RADIUS_METERS = 500  # Ruxsat etilgan radius 500 metr
 
+EXCEL_FILE = 'teachers.xlsx'  # Siz yuklagan Excel fayl nomi
+
 def calculate_distance(lat1, lon1, lat2, lon2):
     """Ikki nuqta orasidagi masofani metrda hisoblaydi"""
     R = 6371000  # Yer radiusi (metrda)
@@ -31,16 +33,29 @@ def home():
 @app.route('/check-attendance', methods=['POST'])
 def check_attendance():
     data = request.json
-    user_id = data.get('user_id')
-    full_name = data.get('full_name')
+    user_id = data.get('user_id')  # JSHR yoki xodim raqami
     user_lat = data.get('latitude')
     user_lon = data.get('longitude')
-    action_type = data.get('action_type', 'Keldi')  # 'Keldi' yoki 'Ketdi'
+    action_type = data.get('action_type', 'Keldi')
 
-    if not all([user_id, user_lat, user_lon, full_name]):
+    if not all([user_id, user_lat, user_lon]):
         return jsonify({'success': False, 'message': 'Ma’lumotlar yetishmayapti!'}), 400
 
-    # Xodimning turgan joyi bilan texnikum orasidagi masofa
+    # Excel bazadan xodimni qidiramiz
+    full_name = "Noma'lum xodim"
+    if os.path.exists(EXCEL_FILE):
+        try:
+            df_excel = pd.read_excel(EXCEL_FILE)
+            # Excel fayldagi ustun nomlariga qarab moslaysiz (masalan, JSHR yoki ID ustuni)
+            # Bu yerda user_id Exceldagi JSHR yoki tartib raqamiga mos kelishi tekshiriladi
+            matched = df_excel[df_excel.astype(str).isin([str(user_id)]).any(axis=1)]
+            if not matched.empty:
+                # Ism-familiya yozilgan ustundan F.I.O. ni olamiz (masalan, 'F.I.O' yoki mos ustun)
+                full_name = str(matched.iloc[0].values[1]) # Ustun tartibiga ko'ra o'zgarishi mumkin
+        except Exception as e:
+            print("Excel o'qish xatosi:", e)
+
+    # Masofani hisoblaymiz
     distance = calculate_distance(user_lat, user_lon, TECHNIKUM_LAT, TECHNIKUM_LON)
 
     if distance <= RADIUS_METERS:
@@ -66,7 +81,7 @@ def check_attendance():
 
         return jsonify({
             'success': True,
-            'message': f"Muvaffaqiyatli qayd etildi: {action_type}!",
+            'message': f"Muvaffaqiyatli qayd etildi: {full_name} ({action_type})!",
             'time': now,
             'distance': round(distance, 1)
         })
