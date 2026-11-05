@@ -39,19 +39,22 @@ def check_attendance():
     full_name = "Noma'lum xodim"
     if os.path.exists(EXCEL_FILE):
         try:
+            # Excel faylni oddiy o'qish
             df_excel = pd.read_excel(EXCEL_FILE, header=None)
-            print("Excel o'qildi, qatorlar soni:", len(df_excel))
             
-            # Barcha ustunlar bo'ylab shu JSHR raqamini qidirib ko'ramiz
-            for index, row in df_excel.iterrows():
-                row_str = row.astype(str).values
-                if any(user_id in val for val in row_str):
-                    # Agar topilsa, 1-ustundan (B kolonkadan) ismni olamiz
-                    full_name = str(row.iloc[1])
-                    print("Topildi:", full_name)
+            # Har bir qatorni tekshiramiz
+            for idx, row in df_excel.iterrows():
+                # Qatordagi barcha ustunlarni matnga aylantirib qidiramiz
+                row_values = [str(val).strip() for val in row.values]
+                
+                # Agar yuborilgan JSHR shu qatorda mavjud bo'lsa
+                if any(user_id in val for val in row_values):
+                    # 1-indeksdagi ustundan (B ustuni) ismni olamiz
+                    if len(row_values) > 1:
+                        full_name = row_values[1]
                     break
         except Exception as e:
-            print("Excel o'qish xatosi:", e)
+            print("Xatolik yuz berdi:", e)
 
     distance = calculate_distance(user_lat, user_lon, TECHNIKUM_LAT, TECHNIKUM_LON)
 
