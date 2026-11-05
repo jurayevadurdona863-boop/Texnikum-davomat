@@ -11,7 +11,7 @@ TECHNIKUM_LAT = 38.971199
 TECHNIKUM_LON = 66.707470
 RADIUS_METERS = 500
 
-# Öğretmenler Veritabanı (JSHR ve İsim-Soyisim)
+# O'qituvchilar bazasi
 TEACHERS_DB = {
     "30306817710045": "Xujauyozov Bekzod Sunnatovich",
     "950741212": "Sultonov Abror Tursunpo'lat o'g'li",
@@ -58,7 +58,7 @@ def calculate_distance(lat1, lon1, lat2, lon2):
 
 @app.route('/')
 def home():
-    return "2-son Texnikum Davomat Serveri mukammal ishlamoqda!"
+    return "2-son Texnikum Davomat Serveri (Avtomatik vaqt nazorati bilan) ishlamoqda!"
 
 # --- ADMIN PANEL ---
 @app.route('/admin')
@@ -87,7 +87,9 @@ def admin_panel():
             th, td { padding: 12px; border: 1px solid #ddd; text-align: center; }
             th { background-color: #007bff; color: white; }
             tr:nth-child(even) { background-color: #f9f9f9; }
-            .badge { padding: 5px 10px; border-radius: 4px; color: white; background: #28a745; }
+            .badge-keldi { padding: 5px 10px; border-radius: 4px; color: white; background: #28a745; }
+            .badge-kechikdi { padding: 5px 10px; border-radius: 4px; color: white; background: #ffc107; color: black; }
+            .badge-erta { padding: 5px 10px; border-radius: 4px; color: white; background: #dc3545; }
         </style>
     </head>
     <body>
@@ -106,7 +108,15 @@ def admin_panel():
                 <td>{{ row.full_name }}</td>
                 <td>{{ row.date }}</td>
                 <td>{{ row.time }}</td>
-                <td><span class="badge">{{ row.status }}</span></td>
+                <td>
+                    {% if "Kechikdi" in row.status %}
+                        <span class="badge-kechikdi">{{ row.status }}</span>
+                    {% elif "Erta" in row.status %}
+                        <span class="badge-erta">{{ row.status }}</span>
+                    {% else %}
+                        <span class="badge-keldi">{{ row.status }}</span>
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
         </table>
@@ -121,14 +131,12 @@ def check_attendance():
     user_id = str(data.get('user_id')).strip()
     user_lat = data.get('latitude')
     user_lon = data.get('longitude')
-    action_type = data.get('action_type', 'Keldi')
+    action_type = data.get('action_type', 'Keldi') # Keldi yoki Ketdi
 
     if not all([user_id, user_lat, user_lon]):
         return jsonify({'success': False, 'message': 'Ma’lumotlar yetishmayapti!'}), 400
 
-    # Doğrudan veritabanından (dictionary) ismi alıyoruz
     full_name = TEACHERS_DB.get(user_id, "Noma'lum xodim")
-
     distance = calculate_distance(user_lat, user_lon, TECHNIKUM_LAT, TECHNIKUM_LON)
 
     if distance <= RADIUS_METERS:
@@ -136,11 +144,25 @@ def check_attendance():
         now_uzt = datetime.now(UZT)
         today_date = now_uzt.strftime("%Y-%m-%d")
         now_time = now_uzt.strftime("%H:%M:%S")
-        
+        current_hour_minute = now_uzt.strftime("%H:%M")
+
+        # Avtomatik vaqt tekshiruvi mantiqi
+        final_status = action_type
+        if action_type == 'Keldi':
+            if current_hour_minute <= "08:30":
+                final_status = "O'z vaqtida keldi"
+            else:
+                final_status = f"Kechikdi ({current_hour_minute})"
+        elif action_type == 'Ketdi':
+            if current_hour_minute < "16:00":
+                final_status = f"Erta chiqib ketdi ({current_hour_minute})"
+            else:
+                final_status = "O'z vaqtida ketdi"
+
         file_path = 'attendance.csv'
         try:
             df = pd.read_csv(file_path)
-        except FileNotFoundError:
+        except Exception:
             df = pd.DataFrame(columns=['user_id', 'full_name', 'date', 'time', 'status'])
 
         new_row = {
@@ -148,7 +170,7 @@ def check_attendance():
             'full_name': full_name, 
             'date': today_date, 
             'time': now_time, 
-            'status': action_type
+            'status': final_status
         }
         
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
@@ -156,7 +178,7 @@ def check_attendance():
 
         return jsonify({
             'success': True,
-            'message': f"Muvaffaqiyatli qayd etildi: {full_name} ({action_type})!",
+            'message': f"Qayd etildi: {full_name} - {final_status}!",
             'time': now_time,
             'distance': round(distance, 1)
         })
