@@ -10,18 +10,28 @@ app = Flask(__name__)
 TECHNIKUM_LAT = 38.971199
 TECHNIKUM_LON = 66.707470
 RADIUS_METERS = 500
-EXCEL_FILE = 'teachers.xlsx'
 
-# Admin login va paroli (xohlasangiz o'zgartirishingiz mumkin)
+# Öğretmenler Veritabanı (JSHR ve İsim-Soyisim)
+TEACHERS_DB = {
+    "30306817710045": "Xujauyozov Bekzod Sunnatovich",
+    "950741212": "Sultonov Abror Tursunpo'lat o'g'li",
+    "990294334": "Hasanov Zohid Pardayevich",
+    "317127530022": "Qulmanatov Azamat Xolmanatovich",
+    "30102985730037": "Ismatov Xudoyqul Dilshod o'g'li",
+    "31304605730039": "Azimov Tohir Eshpo'latovich",
+    "42308952710050": "Xo'janov Chori Karimovich",
+    "32501/15/30026": "Ismatova Umida Dilshod qizi",
+    "41401815730020": "Moyliyev Muxtor Xushmurodovich",
+    "33117915590010": "Boysmov Chinnigul Xayrullayevna"
+}
+
 ADMIN_USER = "admin"
 ADMIN_PASS = "texnikum2026"
 
 def check_auth(username, password):
-    """Login va parolni tekshirish"""
     return username == ADMIN_USER and password == ADMIN_PASS
 
 def authenticate():
-    """Parol noto'g'ri bo'lsa yoki kiritilmasa chiqadigan oyna"""
     return Response(
         'Kirish taqiqlandi! Login va parolni kiriting.', 401,
         {'WWW-Authenticate': 'Basic realm="Admin Panel"'}
@@ -50,7 +60,7 @@ def calculate_distance(lat1, lon1, lat2, lon2):
 def home():
     return "2-son Texnikum Davomat Serveri mukammal ishlamoqda!"
 
-# --- PAROL HIMOYALANGAN ADMIN PANEL ---
+# --- ADMIN PANEL ---
 @app.route('/admin')
 @requires_auth
 def admin_panel():
@@ -116,18 +126,8 @@ def check_attendance():
     if not all([user_id, user_lat, user_lon]):
         return jsonify({'success': False, 'message': 'Ma’lumotlar yetishmayapti!'}), 400
 
-    full_name = "Noma'lum xodim"
-    if os.path.exists(EXCEL_FILE):
-        try:
-            df_excel = pd.read_excel(EXCEL_FILE, header=None)
-            for idx, row in df_excel.iterrows():
-                row_str = [str(val).strip() for val in row.values]
-                if any(user_id == val for val in row_str):
-                    if len(row_str) > 1:
-                        full_name = row_str[1]
-                    break
-        except Exception as e:
-            print("Excel faylni o'qishda xatolik:", e)
+    # Doğrudan veritabanından (dictionary) ismi alıyoruz
+    full_name = TEACHERS_DB.get(user_id, "Noma'lum xodim")
 
     distance = calculate_distance(user_lat, user_lon, TECHNIKUM_LAT, TECHNIKUM_LON)
 
