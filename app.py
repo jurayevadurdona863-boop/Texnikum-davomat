@@ -41,14 +41,14 @@ def check_attendance():
     if not all([user_id, user_lat, user_lon]):
         return jsonify({'success': False, 'message': 'Ma’lumotlar yetishmayapti!'}), 400
 
-    # Excel bazadan xodimni JSHR (F ustuni / 5-indeks) bo'yicha qidiramiz
+    # Excel bazadan xodimni JSHR (E ustuni / 4-indeks) bo'yicha qidiramiz
     full_name = "Noma'lum xodim"
     if os.path.exists(EXCEL_FILE):
         try:
             df_excel = pd.read_excel(EXCEL_FILE, header=None)
             
-            # F ustuni (5-indeks) PNFL bo'yicha qidirishga to'g'irlandi
-            matched = df_excel[df_excel.iloc[:, 5].astype(str).str.contains(str(user_id), na=False)]
+            # E ustuni (4-indeks) PNFL bo'yicha qidirish
+            matched = df_excel[df_excel.iloc[:, 4].astype(str).str.contains(str(user_id), na=False)]
             if not matched.empty:
                 # B ustunidan (1-indeks) Ism sharifini olamiz
                 full_name = str(matched.iloc[0, 1])
