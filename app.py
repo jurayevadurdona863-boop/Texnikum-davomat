@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify
 import math
-import pandas as pd
 from datetime import datetime, timezone, timedelta
 import os
 
@@ -9,7 +8,20 @@ app = Flask(__name__)
 TECHNIKUM_LAT = 38.971199
 TECHNIKUM_LON = 66.707470
 RADIUS_METERS = 500
-EXCEL_FILE = 'teachers.xlsx'
+
+# O'qituvchilar bazasi (JSHR va Ism-shariflar)
+TEACHERS_DB = {
+    "30306817710045": "Xujauyozov Bekzod Sunnatovich",
+    "950741212": "Sultonov Abror Tursunpo'lat o'g'li",
+    "990294334": "Hasanov Zohid Pardayevich",
+    "317127530022": "Qulmanatov Azamat Xolmanatovich",
+    "30102985730037": "Ismatov Xudoyqul Dilshod o'g'li",
+    "31304605730039": "Azimov Tohir Eshpo'latovich",
+    "42308952710050": "Xo'janov Chori Karimovich",
+    "32501/15/30026": "Ismatova Umida Dilshod qizi",
+    "41401815730020": "Moyliyev Muxtor Xushmurodovich",
+    "33117915590010": "Boysmov Chinnigul Xayrullayevna"
+}
 
 def calculate_distance(lat1, lon1, lat2, lon2):
     R = 6371000
@@ -36,25 +48,8 @@ def check_attendance():
     if not all([user_id, user_lat, user_lon]):
         return jsonify({'success': False, 'message': 'Ma’lumotlar yetishmayapti!'}), 400
 
-    full_name = "Noma'lum xodim"
-    if os.path.exists(EXCEL_FILE):
-        try:
-            # Excel faylni oddiy o'qish
-            df_excel = pd.read_excel(EXCEL_FILE, header=None)
-            
-            # Har bir qatorni tekshiramiz
-            for idx, row in df_excel.iterrows():
-                # Qatordagi barcha ustunlarni matnga aylantirib qidiramiz
-                row_values = [str(val).strip() for val in row.values]
-                
-                # Agar yuborilgan JSHR shu qatorda mavjud bo'lsa
-                if any(user_id in val for val in row_values):
-                    # 1-indeksdagi ustundan (B ustuni) ismni olamiz
-                    if len(row_values) > 1:
-                        full_name = row_values[1]
-                    break
-        except Exception as e:
-            print("Xatolik yuz berdi:", e)
+    # Baza orqali ismni topamiz
+    full_name = TEACHERS_DB.get(user_id, "Noma'lum xodim")
 
     distance = calculate_distance(user_lat, user_lon, TECHNIKUM_LAT, TECHNIKUM_LON)
 
@@ -66,8 +61,10 @@ def check_attendance():
         
         file_path = 'attendance.csv'
         try:
+            import pandas as pd
             df = pd.read_csv(file_path)
-        except FileNotFoundError:
+        except Exception:
+            import pandas as pd
             df = pd.DataFrame(columns=['user_id', 'full_name', 'date', 'time', 'status'])
 
         new_row = {
@@ -78,6 +75,7 @@ def check_attendance():
             'status': action_type
         }
         
+        import pandas as pd
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         df.to_csv(file_path, index=False)
 
