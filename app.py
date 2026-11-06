@@ -4,12 +4,31 @@ import pandas as pd
 from datetime import datetime, timezone, timedelta
 import os
 from functools import wraps
+import requests
 
 app = Flask(__name__)
 
 TECHNIKUM_LAT = 38.971199
 TECHNIKUM_LON = 66.707470
 RADIUS_METERS = 500
+
+# Telegram Bot sozlamalari
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "9241880191:AAEGdwBHjqdBmqLv4hOrL8bIvJl2bRAV8QE")
+CHAT_IDS = ["1838498079", "1611805500", "1179846016", "727029645"]
+
+def send_telegram_alert(message):
+    """Telegram bot orqali barcha chat ID larga xabar yuborish"""
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    for chat_id in CHAT_IDS:
+        payload = {
+            "chat_id": chat_id,
+            "text": message,
+            "parse_mode": "Markdown"
+        }
+        try:
+            requests.post(url, json=payload)
+        except Exception as e:
+            print(f"Telegramga xabar yuborishda xatolik ({chat_id}): {e}")
 
 # O'qituvchilar bazasi
 TEACHERS_DB = {
@@ -58,7 +77,7 @@ def calculate_distance(lat1, lon1, lat2, lon2):
 
 @app.route('/')
 def home():
-    return "2-son Texnikum Davomat Serveri (Avtomatik vaqt nazorati bilan) ishlamoqda!"
+    return "2-son Texnikum Davomat Serveri (Avtomatik vaqt nazorati va Telegram bot bilan) ishlamoqda!"
 
 # --- ADMIN PANEL ---
 @app.route('/admin')
@@ -88,7 +107,7 @@ def admin_panel():
             th { background-color: #007bff; color: white; }
             tr:nth-child(even) { background-color: #f9f9f9; }
             .badge-keldi { padding: 5px 10px; border-radius: 4px; color: white; background: #28a745; }
-            .badge-kechikdi { padding: 5px 10px; border-radius: 4px; color: white; background: #ffc107; color: black; }
+            .badge-kechikdi { padding: 5px 10px; border-radius: 4px; color: black; background: #ffc107; }
             .badge-erta { padding: 5px 10px; border-radius: 4px; color: white; background: #dc3545; }
         </style>
     </head>
@@ -111,7 +130,7 @@ def admin_panel():
                 <td>
                     {% if "Kechikdi" in row.status %}
                         <span class="badge-kechikdi">{{ row.status }}</span>
-                    {% elif "Erta" in row.status %}
+                    {% elif "Erta" in row.status or "oldin" in row.status %}
                         <span class="badge-erta">{{ row.status }}</span>
                     {% else %}
                         <span class="badge-keldi">{{ row.status }}</span>
@@ -175,6 +194,18 @@ def check_attendance():
         
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         df.to_csv(file_path, index=False)
+
+        # Telegram bot orqali xabar yuborish
+        if "Kechikdi" in final_status:
+            msg = f"⚠️ *Kechikish ogohlantirishi*\n👤 *Xodim:* {full_name}\n🕒 *Vaqt:* {now_time}\n📌 *Holat:* {final_status}"
+        elif "Erta" in final_status:
+            msg = f"🚨 *Vaqtidan oldin ketish*\n👤 *Xodim:* {full_name}\n🕒 *Vaqt:* {now_time}\n📌 *Holat:* {final_status}!"
+        elif "vaqtida keldi" in final_status:
+            msg = f"✅ *Xodim kelishi*\n👤 *Xodim:* {full_name}\n🕒 *Vaqt:* {now_time}\n📌 *Holat:* {final_status}"
+        else:
+            msg = f"🚪 *Xodim ketishi*\n👤 *Xodim:* {full_name}\n🕒 *Vaqt:* {now_time}\n📌 *Holat:* {final_status}"
+
+        send_telegram_alert(msg)
 
         return jsonify({
             'success': True,
